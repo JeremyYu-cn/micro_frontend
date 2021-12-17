@@ -7,6 +7,7 @@ class SandBox implements SandBoxImplement {
   public proxy: Record<string, any> | null;
   private isSandboxActive: boolean;
   private fateWindow: Map<string, any>;
+  public name: string;
 
   active() {
     this.isSandboxActive = true;
@@ -17,6 +18,7 @@ class SandBox implements SandBoxImplement {
   }
 
   constructor(appName: string, context: Window & Record<string, any>) {
+    this.name = appName;
     this.isSandboxActive = false;
     this.fateWindow = new Map();
     this.proxy = new Proxy(this.fateWindow, {
