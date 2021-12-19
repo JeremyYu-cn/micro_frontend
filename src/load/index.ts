@@ -5,9 +5,9 @@ type LoadHtmlResult = {
 };
 
 /** 加载HTML */
-async function loadHtml(entry: string) {
+export async function loadHtml(entry: string): Promise<LoadHtmlResult> {
   const data = await fetch(entry, {
-    method: 'GET',
+    method: "GET",
   });
   const text = await data.text();
   const reg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
@@ -17,10 +17,23 @@ async function loadHtml(entry: string) {
     ?.filter((val) => val)
     .map((val) => (isHttp.test(val) ? val : `${entry}${val}`));
   console.log(scriptArr);
-  return scriptArr;
+  return {
+    entry,
+    html: text,
+    scriptSrc: scriptArr || [],
+  };
 }
 
 /** 加载JS文件 */
-async function loadFunction() {}
-
-export default loadHtml;
+export async function loadFunction(scripts: string[]) {
+  const task: Promise<Response>[] = [];
+  scripts.forEach((val) => {
+    task.push(fetch(val));
+  });
+  const result = await Promise.all(task);
+  const scriptArr: string[] = [];
+  for (let x of result) {
+    scriptArr.push(await x.text());
+  }
+  return scriptArr;
+}
