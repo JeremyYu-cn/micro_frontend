@@ -16,7 +16,6 @@ export async function loadHtml(entry: string): Promise<LoadHtmlResult> {
     .match(reg)
     ?.filter((val) => val)
     .map((val) => (isHttp.test(val) ? val : `${entry}${val}`));
-  console.log(scriptArr);
   return {
     entry,
     html: text,
@@ -24,16 +23,41 @@ export async function loadHtml(entry: string): Promise<LoadHtmlResult> {
   };
 }
 
+type LoadFunctionResult = {
+  beforeMount: () => void;
+  mount: (props: Record<string, any>) => void;
+  unmount: (props: Record<string, any>) => void;
+};
+
+function injectEnvironmentStr() {
+  return `
+    console.log(this.a)
+    window = this;
+    window.PRODUCT_BY_MICRO_FROUNTEND = true;
+  `;
+}
+
 /** 加载JS文件 */
-export async function loadFunction(scripts: string[]) {
-  const task: Promise<Response>[] = [];
+export async function loadFunction<T extends LoadFunctionResult>(
+  context: Window,
+  scripts: string[] = []
+): Promise<T> {
+  let scriptStr = `
+    ${injectEnvironmentStr()}
+    return Promise.all([`;
   scripts.forEach((val) => {
-    task.push(fetch(val));
+    scriptStr += `import("${val}"),`;
   });
-  const result = await Promise.all(task);
-  const scriptArr: string[] = [];
-  for (let x of result) {
-    scriptArr.push(await x.text());
-  }
-  return scriptArr;
+  scriptStr = scriptStr.substring(0, scriptStr.length - 1);
+  scriptStr += "]);";
+  const result = await new Function(scriptStr).call(context);
+  let obj: LoadFunctionResult = {
+    beforeMount: () => {},
+    mount: () => {},
+    unmount: () => {},
+  };
+  (<Record<string, any>[]>result).forEach((val) => {
+    Object.assign(obj, val);
+  });
+  return <T>obj;
 }
