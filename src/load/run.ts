@@ -1,6 +1,6 @@
-import type { RegisterData } from '../globalType';
-import SandBox from '../sandbox/index';
-import { LoadHtmlResult, loadFunction, LoadFunctionResult } from './index';
+import type { RegisterData } from "../globalType";
+import SandBox from "../sandbox/index";
+import { LoadHtmlResult, loadFunction, LoadFunctionResult } from "./load";
 
 const runIsRender: Record<string, boolean> = {};
 
@@ -16,13 +16,13 @@ export async function runScript(
   appSandBox.active();
   const lifeCycle = await loadFunction(appSandBox.proxy, htmlData.scriptSrc);
 
-  // 已经渲染过没必要重新渲染
+  // 已经渲染过没必要重新载入
   if (!runIsRender[appData.appName]) {
     /** 渲染前调用生命周期 */
     lifeCycle.beforeMount();
 
     // 注入子应用HTML
-    container.innerHTML = htmlData.html || '';
+    container.innerHTML = htmlData.html || "";
   }
 
   // 调用子应用渲染函数
@@ -31,7 +31,7 @@ export async function runScript(
   });
 }
 
-/**  */
+/** 卸载应用 */
 export function unmountScript(
   container: Element,
   lifeCycle: LoadFunctionResult
