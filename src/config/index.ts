@@ -1,0 +1,2 @@
+/** 微前端环境变量名 */
+export const PRODUCT_BY_MICRO_FRONTEND = 'PRODUCT_BY_MICRO_FRONTEND';

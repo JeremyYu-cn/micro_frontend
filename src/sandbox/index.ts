@@ -28,11 +28,9 @@ class SandBox implements SandBoxImplement {
     this.proxy = new Proxy(<ProxyParam>fateWindow, {
       set: (target, key, value) => {
         if (this.isSandboxActive) {
-          console.log(key, value);
-
-          // if (Object.keys(context).includes(<string>key)) {
-          //   context[<string>key] = value;
-          // }
+          if (Object.keys(context).includes(<string>key)) {
+            context[<string>key] = value;
+          }
           target[<string>key] = value;
         }
         return true;
@@ -43,6 +41,7 @@ class SandBox implements SandBoxImplement {
         } else if (Object.keys(context).includes(<string>key)) {
           return context[<string>key];
         }
+
         return undefined;
       },
     });

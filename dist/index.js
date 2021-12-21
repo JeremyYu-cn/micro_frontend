@@ -1,35 +1,44 @@
 (() => {
+  // src/config/index.ts
+  var PRODUCT_BY_MICRO_FRONTEND = "PRODUCT_BY_MICRO_FRONTEND";
+
   // src/load/index.ts
   async function loadHtml(entry) {
     const data = await fetch(entry, {
       method: "GET"
     });
-    const text = await data.text();
+    let text = await data.text();
     const reg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
+    const styleReg = /(?<=<link[^>]*href=['\"]?)[^'\"> ]*/g;
     const isHttp = /http(s)?:\/\//;
     const scriptArr = text.match(reg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
+    const styleArr = text.match(styleReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
+    console.log(styleArr);
+    text = text.replace(/(<script.*><\/script>)/g, "");
     return {
       entry,
       html: text,
-      scriptSrc: scriptArr || []
+      scriptSrc: scriptArr || [],
+      styleSrc: styleArr || []
     };
   }
   function injectEnvironmentStr() {
     return `
-    console.log(this.a)
-    window = this;
-    window.PRODUCT_BY_MICRO_FROUNTEND = true;
+      window.${PRODUCT_BY_MICRO_FRONTEND} = true;
   `;
   }
   async function loadFunction(context, scripts = []) {
     let scriptStr = `
-    ${injectEnvironmentStr()}
-    return Promise.all([`;
+    return (function(window) {
+      ${injectEnvironmentStr()}
+      return Promise.all([`;
     scripts.forEach((val) => {
       scriptStr += `import("${val}"),`;
     });
     scriptStr = scriptStr.substring(0, scriptStr.length - 1);
-    scriptStr += "]);";
+    scriptStr += `]);
+    })(this)
+  `;
     const result = await new Function(scriptStr).call(context);
     let obj = {
       beforeMount: () => {
@@ -63,7 +72,9 @@
       this.proxy = new Proxy(fateWindow, {
         set: (target, key, value) => {
           if (this.isSandboxActive) {
-            console.log(key, value);
+            if (Object.keys(context).includes(key)) {
+              context[key] = value;
+            }
             target[key] = value;
           }
           return true;
@@ -81,11 +92,34 @@
   };
   var sandbox_default = SandBox;
 
+  // src/load/run.ts
+  var runIsRender = {};
+  async function runScript(appData, htmlData) {
+    const container = document.querySelector(appData.containerId);
+    if (!container) {
+      throw new Error(`container[${appData.containerId}] is not found`);
+    }
+    const appSandBox = new sandbox_default(appData.appName, window);
+    appSandBox.active();
+    const lifeCycle = await loadFunction(appSandBox.proxy, htmlData.scriptSrc);
+    if (!runIsRender[appData.appName]) {
+      lifeCycle.beforeMount();
+      container.innerHTML = htmlData.html || "";
+    }
+    lifeCycle.mount({
+      container
+    });
+  }
+
   // src/index.ts
   (async () => {
     const htmlData = await loadHtml("http://localhost:3000");
-    const sandBox1 = new sandbox_default("sandBox1", window);
-    sandBox1.active();
-    const { mount } = await loadFunction(sandBox1.proxy, htmlData.scriptSrc);
+    const appData = {
+      appName: "middleBackground",
+      entry: "http://localhost:3000",
+      containerId: "#middle_background",
+      activeRoute: "/vue"
+    };
+    runScript(appData, htmlData);
   })();
 })();
