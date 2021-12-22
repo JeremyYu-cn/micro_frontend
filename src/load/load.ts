@@ -1,5 +1,8 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from "../config/index";
-import type { LoadFunctionMountParam } from "../globalType";
+import { PRODUCT_BY_MICRO_FRONTEND } from '../config/index';
+import type {
+  LoadFunctionMountParam,
+  UnloadFunctionParam,
+} from '../globalType';
 
 export type LoadHtmlResult = {
   entry: string;
@@ -15,7 +18,7 @@ const isHttp = /http(s)?:\/\//;
 /** 加载HTML */
 export async function loadHtml(entry: string): Promise<LoadHtmlResult> {
   const data = await fetch(entry, {
-    method: "GET",
+    method: 'GET',
   });
   let text = await data.text();
   const scriptArr = text
@@ -26,8 +29,7 @@ export async function loadHtml(entry: string): Promise<LoadHtmlResult> {
     .match(styleReg)
     ?.filter((val) => val)
     .map((val) => (isHttp.test(val) ? val : `${entry}${val}`));
-  console.log(styleArr);
-  text = text.replace(/(<script.*><\/script>)/g, "");
+  text = text.replace(/(<script.*><\/script>)/g, '');
   return {
     entry,
     html: text,
@@ -40,7 +42,7 @@ export async function loadHtml(entry: string): Promise<LoadHtmlResult> {
 export type LoadFunctionResult = {
   beforeMount: () => void;
   mount: (props: LoadFunctionMountParam) => void;
-  unmount: (props: LoadFunctionMountParam) => void;
+  unmount: (props: UnloadFunctionParam) => void;
 };
 
 /** 注入环境变量 */

@@ -1,19 +1,59 @@
 (() => {
+  // src/storage/index.ts
+  function createStore() {
+    const globalStore = new Proxy({}, {
+      get(target, key) {
+        return target[key];
+      },
+      set(target, key, value) {
+        const oldVal = target[key];
+        target[key] = value;
+        triggerEvent({ key, value, oldValue: oldVal });
+        return true;
+      }
+    });
+    return globalStore;
+  }
+  var listener = /* @__PURE__ */ new Map();
+  function addNewListener(appName) {
+    if (listener.has(appName))
+      return;
+    listener.set(appName, {});
+  }
+  function triggerEvent(data) {
+    listener.forEach((val) => {
+      if (val[data.key] && typeof val[data.key] === "function") {
+        val[data.key](data);
+      }
+    });
+  }
+  function setEventTrigger(appName, key, callback) {
+    if (listener.has(appName)) {
+      const obj = listener.get(appName);
+      if (obj) {
+        obj[key] = callback;
+      }
+    }
+  }
+  function setStoreValue(target, key, value) {
+    target[key] = value;
+    return true;
+  }
+
   // src/config/index.ts
   var PRODUCT_BY_MICRO_FRONTEND = "PRODUCT_BY_MICRO_FRONTEND";
 
-  // src/load/index.ts
+  // src/load/load.ts
+  var scriptReg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
+  var styleReg = /(?<=<link[^>]*href=['\"]?)[^'\"> ]*/g;
+  var isHttp = /http(s)?:\/\//;
   async function loadHtml(entry) {
     const data = await fetch(entry, {
       method: "GET"
     });
     let text = await data.text();
-    const reg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
-    const styleReg = /(?<=<link[^>]*href=['\"]?)[^'\"> ]*/g;
-    const isHttp = /http(s)?:\/\//;
-    const scriptArr = text.match(reg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
+    const scriptArr = text.match(scriptReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     const styleArr = text.match(styleReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
-    console.log(styleArr);
     text = text.replace(/(<script.*><\/script>)/g, "");
     return {
       entry,
@@ -94,7 +134,7 @@
 
   // src/load/run.ts
   var runIsRender = {};
-  async function runScript(appData, htmlData) {
+  async function runScript(appData, htmlData, globalStore) {
     const container = document.querySelector(appData.containerId);
     if (!container) {
       throw new Error(`container[${appData.containerId}] is not found`);
@@ -107,19 +147,69 @@
       container.innerHTML = htmlData.html || "";
     }
     lifeCycle.mount({
-      container
+      container,
+      store: {
+        get: (key) => globalStore[key],
+        set: (key, value) => setStoreValue(globalStore, key, value),
+        listen: ({ key, callback }) => setEventTrigger(appData.appName, key, callback)
+      }
     });
   }
 
+  // src/load/index.ts
+  var MicroFrountend = class {
+    servers;
+    serverLoadData;
+    defaultRoute;
+    constructor(servers) {
+      this.servers = servers;
+      this.serverLoadData = {};
+      this.defaultRoute = "";
+    }
+    async init() {
+      for (let item of this.servers) {
+        const serverData = await loadHtml(item.entry);
+        addNewListener(item.appName);
+        this.serverLoadData[item.appName] = serverData;
+      }
+      if (this.servers.length) {
+        this.defaultRoute = this.servers[0].activeRoute;
+      }
+      return true;
+    }
+    async setDefaultRoute(routeName) {
+      const isInclude = Object.keys(this.serverLoadData).includes(routeName);
+      if (!isInclude) {
+        return false;
+      }
+      this.defaultRoute = routeName;
+      return true;
+    }
+    async start() {
+      const appIndex = this.servers.findIndex((val) => val.activeRoute === this.defaultRoute);
+      if (appIndex == -1) {
+        console.warn("route is not found");
+        return false;
+      }
+      const appName = this.servers[appIndex].appName;
+      const htmlData = this.serverLoadData[appName];
+      const store = createStore();
+      await runScript(this.servers[appIndex], htmlData, store);
+    }
+  };
+
   // src/index.ts
   (async () => {
-    const htmlData = await loadHtml("http://localhost:3000");
-    const appData = {
-      appName: "middleBackground",
-      entry: "http://localhost:3000",
-      containerId: "#middle_background",
-      activeRoute: "/vue"
-    };
-    runScript(appData, htmlData);
+    const appList = [
+      {
+        appName: "middleBackground",
+        entry: "http://localhost:3000",
+        containerId: "#middle_background",
+        activeRoute: "/vue"
+      }
+    ];
+    const microService = new MicroFrountend(appList);
+    await microService.init();
+    await microService.start();
   })();
 })();

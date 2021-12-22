@@ -1,12 +1,18 @@
-import type { RegisterData } from "../globalType";
-import SandBox from "../sandbox/index";
-import { LoadHtmlResult, loadFunction, LoadFunctionResult } from "./load";
+import type { RegisterData } from '../globalType';
+import SandBox from '../sandbox/index';
+import {
+  clearEventTrigger,
+  setEventTrigger,
+  setStoreValue,
+} from '../storage/index';
+import { LoadHtmlResult, loadFunction, LoadFunctionResult } from './load';
 
 const runIsRender: Record<string, boolean> = {};
 
 export async function runScript(
   appData: RegisterData,
-  htmlData: LoadHtmlResult
+  htmlData: LoadHtmlResult,
+  globalStore: Record<string, any>
 ) {
   const container = document.querySelector(appData.containerId);
   if (!container) {
@@ -22,19 +28,27 @@ export async function runScript(
     lifeCycle.beforeMount();
 
     // 注入子应用HTML
-    container.innerHTML = htmlData.html || "";
+    container.innerHTML = htmlData.html || '';
   }
 
   // 调用子应用渲染函数
   lifeCycle.mount({
     container,
+    store: {
+      get: (key) => globalStore[key],
+      set: (key, value) => setStoreValue(globalStore, key, value),
+      listen: ({ key, callback }) =>
+        setEventTrigger(appData.appName, key, callback),
+    },
   });
 }
 
 /** 卸载应用 */
 export function unmountScript(
+  appName: string,
   container: Element,
   lifeCycle: LoadFunctionResult
 ) {
+  clearEventTrigger(appName);
   lifeCycle.unmount({ container });
 }
