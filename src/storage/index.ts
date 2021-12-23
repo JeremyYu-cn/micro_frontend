@@ -23,7 +23,7 @@ const listener: Map<
   string,
   Record<string, (data: triggerEventParam<any>) => void>
 > = new Map();
-/** 新增监听器 */
+/** 新增store监听器 */
 export function addNewListener(appName: string) {
   if (listener.has(appName)) return;
   listener.set(appName, {});

@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html>
-  <div id="middle_background">111</div>
+  <body>
+    <section style="display: flex">
+      <div style="width: 200px">
+        <ul id="list">
+          <li>vue</li>
+          <li>react</li>
+        </ul>
+      </div>
+      <div id="middle_background" style="width: calc(100vw - 200px)">111</div>
+    </section>
+    <script lang="text/javascript">
+      var list = document.querySelector("#list");
+      list.addEventListener("click", function(e) {
+        if (e.target.nodeName === "LI") {
+          var text = e.target.innerText
+          window.history.pushState({ "PRODUCT_BY_MICRO_FRONTEND": true }, "", `/${text}`)
+        }
+      })
+    </script>
+    <script src="../dist/index.js" lang="text/javascript"></script>
+  </body>
 </html>
-
-<script src="../dist/index.js" lang="text/javascript"></script>

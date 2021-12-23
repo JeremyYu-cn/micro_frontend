@@ -1,4 +1,37 @@
 (() => {
+  // src/config/index.ts
+  var PRODUCT_BY_MICRO_FRONTEND = "PRODUCT_BY_MICRO_FRONTEND";
+
+  // src/route/index.ts
+  function listenHash(callback) {
+    window.addEventListener("hashchange", (ev) => {
+      callback(ev.oldURL, ev.newURL);
+    });
+  }
+  function listenHistory(callback) {
+    window.history.pushState = historyControlRewrite("pushState", callback);
+    window.history.replaceState = historyControlRewrite("replaceState", callback);
+    window.addEventListener("popstate", (ev) => {
+      console.log(ev);
+    });
+  }
+  var historyControlRewrite = function(name, callback) {
+    const method = history[name];
+    return function(data, unused, url) {
+      const oldPathName = window.location.pathname;
+      if (oldPathName === url)
+        return;
+      method.apply(history, [data, unused, url]);
+      callback(oldPathName, url || "", data);
+    };
+  };
+  function loadRouterListen(callback) {
+    listenHash((oldUrl, newUrl) => {
+      console.log(oldUrl, newUrl);
+    });
+    listenHistory(callback);
+  }
+
   // src/storage/index.ts
   function createStore() {
     const globalStore = new Proxy({}, {
@@ -39,9 +72,9 @@
     target[key] = value;
     return true;
   }
-
-  // src/config/index.ts
-  var PRODUCT_BY_MICRO_FRONTEND = "PRODUCT_BY_MICRO_FRONTEND";
+  function clearEventTrigger(appName) {
+    listener.set(appName, {});
+  }
 
   // src/load/load.ts
   var scriptReg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
@@ -69,8 +102,8 @@
   }
   async function loadFunction(context, scripts = []) {
     let scriptStr = `
-    return (function(window) {
-      ${injectEnvironmentStr()}
+    ${injectEnvironmentStr()}
+    return (async function(window) {
       return Promise.all([`;
     scripts.forEach((val) => {
       scriptStr += `import("${val}"),`;
@@ -79,6 +112,7 @@
     scriptStr += `]);
     })(this)
   `;
+    console.log(scriptStr);
     const result = await new Function(scriptStr).call(context);
     let obj = {
       beforeMount: () => {
@@ -154,17 +188,24 @@
         listen: ({ key, callback }) => setEventTrigger(appData.appName, key, callback)
       }
     });
+    return lifeCycle;
+  }
+  function unmountScript(appName, container, lifeCycle) {
+    clearEventTrigger(appName);
+    lifeCycle.unmount({ container });
   }
 
   // src/load/index.ts
   var MicroFrountend = class {
     servers;
     serverLoadData;
-    defaultRoute;
+    currentRoute;
+    store;
     constructor(servers) {
       this.servers = servers;
       this.serverLoadData = {};
-      this.defaultRoute = "";
+      this.currentRoute = "";
+      this.store = createStore();
     }
     async init() {
       for (let item of this.servers) {
@@ -173,28 +214,59 @@
         this.serverLoadData[item.appName] = serverData;
       }
       if (this.servers.length) {
-        this.defaultRoute = this.servers[0].activeRoute;
+        this.setDefaultRoute(this.servers[0].activeRoute);
       }
       return true;
     }
-    async setDefaultRoute(routeName) {
-      const isInclude = Object.keys(this.serverLoadData).includes(routeName);
+    setDefaultRoute(routeName) {
+      const appIndex = this.servers.findIndex((val) => val.activeRoute === routeName);
+      if (appIndex === -1)
+        return false;
+      const appName = this.servers[appIndex].appName;
+      const isInclude = Object.keys(this.serverLoadData).includes(appName);
       if (!isInclude) {
         return false;
       }
-      this.defaultRoute = routeName;
+      this.currentRoute = routeName;
       return true;
     }
     async start() {
-      const appIndex = this.servers.findIndex((val) => val.activeRoute === this.defaultRoute);
+      const appIndex = this.servers.findIndex((val) => val.activeRoute === this.currentRoute);
       if (appIndex == -1) {
         console.warn("route is not found");
         return false;
       }
       const appName = this.servers[appIndex].appName;
       const htmlData = this.serverLoadData[appName];
-      const store = createStore();
-      await runScript(this.servers[appIndex], htmlData, store);
+      const lifeCycle = await runScript(this.servers[appIndex], htmlData, this.store);
+      this.serverLoadData[appName].lifeCycle = lifeCycle;
+      loadRouterListen((oldPath, pathName, param) => this.handleRouterListen(oldPath, pathName, param));
+    }
+    handleRouterListen(oldPathName, pathName, param) {
+      if (param[PRODUCT_BY_MICRO_FRONTEND]) {
+        const oldAppIndex = this.servers.findIndex((val) => val.activeRoute === oldPathName);
+        const newAppIndex = this.servers.findIndex((val) => val.activeRoute === pathName);
+        if (oldAppIndex > -1 && newAppIndex > -1) {
+          const oldContainerId = this.servers[oldAppIndex].containerId;
+          const newContainerId = this.servers[newAppIndex].containerId;
+          if (oldContainerId === newContainerId) {
+            const appName = this.servers[oldAppIndex].appName;
+            const container = document.querySelector(oldContainerId);
+            const lifeCycle = this.serverLoadData[appName].lifeCycle;
+            if (container && lifeCycle) {
+              unmountScript(appName, container, lifeCycle);
+            }
+          }
+        }
+        if (newAppIndex > -1) {
+          const newAppName = this.servers[newAppIndex].appName;
+          console.log(this.servers[newAppIndex].activeRoute, this.currentRoute);
+          if (this.servers[newAppIndex].activeRoute !== this.currentRoute) {
+            this.setDefaultRoute(this.servers[newAppIndex].activeRoute);
+            runScript(this.servers[newAppIndex], this.serverLoadData[newAppName], this.store);
+          }
+        }
+      }
     }
   };
 
@@ -202,10 +274,10 @@
   (async () => {
     const appList = [
       {
-        appName: "middleBackground",
-        entry: "http://localhost:3000",
+        appName: "middleReact",
+        entry: "http://localhost:3001",
         containerId: "#middle_background",
-        activeRoute: "/vue"
+        activeRoute: "/react"
       }
     ];
     const microService = new MicroFrountend(appList);

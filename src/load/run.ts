@@ -41,6 +41,7 @@ export async function runScript(
         setEventTrigger(appData.appName, key, callback),
     },
   });
+  return lifeCycle;
 }
 
 /** 卸载应用 */

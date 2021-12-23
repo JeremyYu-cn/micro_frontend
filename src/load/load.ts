@@ -9,6 +9,7 @@ export type LoadHtmlResult = {
   html?: string;
   scriptSrc: string[];
   styleSrc: string[];
+  lifeCycle?: LoadFunctionResult;
 };
 
 const scriptReg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
@@ -58,8 +59,8 @@ export async function loadFunction<T extends LoadFunctionResult>(
   scripts: string[] = []
 ): Promise<T> {
   let scriptStr = `
-    return (function(window) {
-      ${injectEnvironmentStr()}
+    ${injectEnvironmentStr()}
+    return (async function(window) {
       return Promise.all([`;
   scripts.forEach((val) => {
     scriptStr += `import("${val}"),`;
@@ -68,6 +69,8 @@ export async function loadFunction<T extends LoadFunctionResult>(
   scriptStr += `]);
     })(this)
   `;
+  console.log(scriptStr);
+
   const result = await new Function(scriptStr).call(context);
   let obj: LoadFunctionResult = {
     beforeMount: () => {},
