@@ -204,13 +204,13 @@
     servers;
     serverLoadData;
     currentRoute;
-    currentActiveContainer;
+    currentActiveApp;
     store;
     constructor(servers) {
       this.servers = servers;
       this.serverLoadData = {};
       this.currentRoute = "";
-      this.currentActiveContainer = [];
+      this.currentActiveApp = [];
       this.store = createStore();
     }
     async init() {
@@ -233,17 +233,26 @@
       this.currentRoute = routeName;
       return true;
     }
-    appendCurrentActiveContainer(containerId) {
-      const isAppend = this.currentActiveContainer.includes(containerId);
+    appendCurrentActiveApp(appName) {
+      const isAppend = this.currentActiveApp.includes(appName);
       if (!isAppend) {
-        this.currentActiveContainer.push(containerId);
+        this.currentActiveApp.push(appName);
       }
     }
-    removeCurrentActiveContainer(containerId) {
-      const index = this.currentActiveContainer.findIndex((val) => val === containerId);
+    removeCurrentActiveApp(appName) {
+      const index = this.currentActiveApp.findIndex((val) => val === appName);
       if (index > -1) {
-        this.currentActiveContainer.splice(index, 1);
+        this.currentActiveApp.splice(index, 1);
       }
+    }
+    getCurrentActiveContainer() {
+      const containerList = [];
+      this.currentActiveApp.forEach((val) => {
+        const index = this.servers.findIndex((item) => item.appName === val);
+        if (index > -1)
+          containerList.push(this.servers[index]);
+      });
+      return containerList;
     }
     async start() {
       loadRouterListen((oldPath, pathName, param) => this.handleRouterListen(oldPath, pathName, param));
@@ -254,25 +263,28 @@
         const appName = val.appName;
         const htmlData = this.serverLoadData[appName];
         const scriptResult = await runScript(val, htmlData, this.store);
+        this.appendCurrentActiveApp(val.appName);
         this.serverLoadData[appName].lifeCycle = scriptResult.lifeCycle;
         this.serverLoadData[appName].sandbox = scriptResult.sandBox;
       }
     }
-    handleRouterListen(oldPathName, pathName, param) {
-      console.log(param);
+    async handleRouterListen(oldPathName, pathName, param) {
       if (param[PRODUCT_BY_MICRO_FRONTEND]) {
         const newAppList = this.servers.filter((val) => val.activeRoute === pathName);
         console.log(oldPathName, pathName);
         if (newAppList.length > 0) {
-          for (let item of oldAppList) {
-            if (this.currentActiveContainer.includes(item.containerId)) {
-              const appName = item.appName;
-              const container = document.querySelector(item.containerId);
-              const loadData = this.serverLoadData[appName];
-              if (container && loadData.lifeCycle && loadData.sandbox) {
-                console.log(111, oldAppList);
-                unmountScript(appName, container, loadData.lifeCycle, loadData.sandbox);
-              }
+          const activeContainerList = this.getCurrentActiveContainer();
+          const destoryList = activeContainerList.filter((val) => newAppList.findIndex((item) => item.appName !== val.appName) > -1);
+          console.log("destoryList", destoryList);
+          for (let item of destoryList) {
+            const appName = item.appName;
+            const container = document.querySelector(item.containerId);
+            const loadData = this.serverLoadData[appName];
+            console.log(loadData);
+            if (container && loadData.lifeCycle && loadData.sandbox) {
+              this.removeCurrentActiveApp(item.appName);
+              console.log("destoryAppName", appName);
+              unmountScript(appName, container, loadData.lifeCycle, loadData.sandbox);
             }
           }
         }
@@ -280,7 +292,11 @@
           const newAppName = item.appName;
           if (item.activeRoute !== this.currentRoute) {
             this.setDefaultRoute(item.activeRoute);
-            runScript(item, this.serverLoadData[newAppName], this.store);
+            this.appendCurrentActiveApp(item.appName);
+            const scriptResult = await runScript(item, this.serverLoadData[newAppName], this.store);
+            this.appendCurrentActiveApp(item.appName);
+            this.serverLoadData[item.appName].lifeCycle = scriptResult.lifeCycle;
+            this.serverLoadData[item.appName].sandbox = scriptResult.sandBox;
           }
         }
       }
@@ -292,13 +308,13 @@
     const appList = [
       {
         appName: "middleReact",
-        entry: "http://localhost:3000",
+        entry: "http://localhost:3001",
         containerId: "#middle_background_react",
         activeRoute: "/"
       },
       {
         appName: "middleBackground",
-        entry: "http://localhost:3001",
+        entry: "http://localhost:3000",
         containerId: "#middle_background_vue",
         activeRoute: "/vue"
       }

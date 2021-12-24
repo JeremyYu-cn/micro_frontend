@@ -1,9 +1,9 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from '../config/index';
-import { RegisterData } from '../globalType';
-import { loadRouterListen } from '../route/index';
-import { addNewListener, createStore } from '../storage/index';
-import { loadHtml, LoadHtmlResult } from './load';
-import { runScript, unmountScript } from './run';
+import { PRODUCT_BY_MICRO_FRONTEND } from "../config/index";
+import { RegisterData } from "../globalType";
+import { loadRouterListen } from "../route/index";
+import { addNewListener, createStore } from "../storage/index";
+import { loadHtml, LoadHtmlResult } from "./load";
+import { runScript, unmountScript } from "./run";
 
 interface MicroFrountendMethod {
   init: () => void;
@@ -19,15 +19,15 @@ export default class MicroFrountend implements MicroFrountendMethod {
   /** 当前路由 */
   public currentRoute: string;
   /** 当前开启的微应用容器 */
-  public currentActiveContainer: string[];
+  public currentActiveApp: string[];
   /** 全局store */
   public store: Record<string, any>;
 
   constructor(servers: RegisterData[]) {
     this.servers = servers;
     this.serverLoadData = {};
-    this.currentRoute = '';
-    this.currentActiveContainer = [];
+    this.currentRoute = "";
+    this.currentActiveApp = [];
     this.store = createStore();
   }
 
@@ -59,20 +59,29 @@ export default class MicroFrountend implements MicroFrountendMethod {
   }
 
   /** 添加活动containerId */
-  private appendCurrentActiveContainer(containerId: string) {
-    const isAppend = this.currentActiveContainer.includes(containerId);
+  private appendCurrentActiveApp(appName: string) {
+    const isAppend = this.currentActiveApp.includes(appName);
     if (!isAppend) {
-      this.currentActiveContainer.push(containerId);
+      this.currentActiveApp.push(appName);
     }
   }
 
-  private removeCurrentActiveContainer(containerId: string) {
-    const index = this.currentActiveContainer.findIndex(
-      (val) => val === containerId
-    );
+  /** 删除活动containerId */
+  private removeCurrentActiveApp(appName: string) {
+    const index = this.currentActiveApp.findIndex((val) => val === appName);
     if (index > -1) {
-      this.currentActiveContainer.splice(index, 1);
+      this.currentActiveApp.splice(index, 1);
     }
+  }
+
+  // 获取当前正在使用的容器
+  private getCurrentActiveContainer() {
+    const containerList: RegisterData[] = [];
+    this.currentActiveApp.forEach((val) => {
+      const index = this.servers.findIndex((item) => item.appName === val);
+      if (index > -1) containerList.push(this.servers[index]);
+    });
+    return containerList;
   }
 
   /** 开启加载微前端应用 */
@@ -89,16 +98,18 @@ export default class MicroFrountend implements MicroFrountendMethod {
       const appName = val.appName;
       const htmlData = this.serverLoadData[appName];
       const scriptResult = await runScript(val, htmlData, this.store);
-
+      this.appendCurrentActiveApp(val.appName);
       this.serverLoadData[appName].lifeCycle = scriptResult.lifeCycle;
       this.serverLoadData[appName].sandbox = scriptResult.sandBox;
     }
   }
 
   // 处理路由监听服务
-  handleRouterListen(oldPathName: string, pathName: string, param: any) {
-    console.log(param);
-
+  private async handleRouterListen(
+    oldPathName: string,
+    pathName: string,
+    param: any
+  ) {
     if (param[PRODUCT_BY_MICRO_FRONTEND]) {
       const newAppList = this.servers.filter(
         (val) => val.activeRoute === pathName
@@ -107,20 +118,29 @@ export default class MicroFrountend implements MicroFrountendMethod {
 
       // 卸载旧服务
       if (newAppList.length > 0) {
-        for (let item of oldAppList) {
-          if (this.currentActiveContainer.includes(item.containerId)) {
-            const appName = item.appName;
-            const container = document.querySelector(item.containerId);
-            const loadData = this.serverLoadData[appName];
-            if (container && loadData.lifeCycle && loadData.sandbox) {
-              console.log(111, oldAppList);
-              unmountScript(
-                appName,
-                container,
-                loadData.lifeCycle,
-                loadData.sandbox
-              );
-            }
+        const activeContainerList = this.getCurrentActiveContainer();
+        const destoryList = activeContainerList.filter(
+          (val) =>
+            newAppList.findIndex((item) => item.appName !== val.appName) > -1
+        );
+        console.log("destoryList", destoryList);
+
+        for (let item of destoryList) {
+          const appName = item.appName;
+          const container = document.querySelector(item.containerId);
+          const loadData = this.serverLoadData[appName];
+          console.log(loadData);
+
+          if (container && loadData.lifeCycle && loadData.sandbox) {
+            this.removeCurrentActiveApp(item.appName);
+            console.log("destoryAppName", appName);
+
+            unmountScript(
+              appName,
+              container,
+              loadData.lifeCycle,
+              loadData.sandbox
+            );
           }
         }
       }
@@ -128,10 +148,17 @@ export default class MicroFrountend implements MicroFrountendMethod {
       // 挂载新服务
       for (let item of newAppList) {
         const newAppName = item.appName;
-
         if (item.activeRoute !== this.currentRoute) {
           this.setDefaultRoute(item.activeRoute);
-          runScript(item, this.serverLoadData[newAppName], this.store);
+          this.appendCurrentActiveApp(item.appName);
+          const scriptResult = await runScript(
+            item,
+            this.serverLoadData[newAppName],
+            this.store
+          );
+          this.appendCurrentActiveApp(item.appName);
+          this.serverLoadData[item.appName].lifeCycle = scriptResult.lifeCycle;
+          this.serverLoadData[item.appName].sandbox = scriptResult.sandBox;
         }
       }
     }
