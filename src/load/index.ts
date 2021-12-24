@@ -18,6 +18,8 @@ export default class MicroFrountend implements MicroFrountendMethod {
   private serverLoadData: Record<string, LoadHtmlResult>;
   /** 当前路由 */
   public currentRoute: string;
+  /** 当前开启的微应用容器 */
+  public currentActiveContainer: string[];
   /** 全局store */
   public store: Record<string, any>;
 
@@ -25,6 +27,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
     this.servers = servers;
     this.serverLoadData = {};
     this.currentRoute = '';
+    this.currentActiveContainer = [];
     this.store = createStore();
   }
 
@@ -34,9 +37,6 @@ export default class MicroFrountend implements MicroFrountendMethod {
       const serverData = await loadHtml(item.entry);
       addNewListener(item.appName);
       this.serverLoadData[item.appName] = serverData;
-    }
-    if (this.servers.length) {
-      this.setDefaultRoute(this.servers[0].activeRoute);
     }
 
     return true;
@@ -58,66 +58,80 @@ export default class MicroFrountend implements MicroFrountendMethod {
     return true;
   }
 
+  /** 添加活动containerId */
+  private appendCurrentActiveContainer(containerId: string) {
+    const isAppend = this.currentActiveContainer.includes(containerId);
+    if (!isAppend) {
+      this.currentActiveContainer.push(containerId);
+    }
+  }
+
+  private removeCurrentActiveContainer(containerId: string) {
+    const index = this.currentActiveContainer.findIndex(
+      (val) => val === containerId
+    );
+    if (index > -1) {
+      this.currentActiveContainer.splice(index, 1);
+    }
+  }
+
   /** 开启加载微前端应用 */
   public async start() {
-    const appIndex = this.servers.findIndex(
-      (val) => val.activeRoute === this.currentRoute
-    );
-    if (appIndex == -1) {
-      console.warn('route is not found');
-      return false;
-    }
-    const appName = this.servers[appIndex].appName;
-    const htmlData = this.serverLoadData[appName];
-    const lifeCycle = await runScript(
-      this.servers[appIndex],
-      htmlData,
-      this.store
-    );
-
-    this.serverLoadData[appName].lifeCycle = lifeCycle;
-
     loadRouterListen((oldPath, pathName, param) =>
       this.handleRouterListen(oldPath, pathName, param)
     );
+    const currentRoute = this.currentRoute || window.location.pathname;
+    console.log(window.location.pathname);
+    const appList = this.servers.filter(
+      (val) => val.activeRoute === currentRoute
+    );
+    for (let val of appList) {
+      const appName = val.appName;
+      const htmlData = this.serverLoadData[appName];
+      const scriptResult = await runScript(val, htmlData, this.store);
+
+      this.serverLoadData[appName].lifeCycle = scriptResult.lifeCycle;
+      this.serverLoadData[appName].sandbox = scriptResult.sandBox;
+    }
   }
 
   // 处理路由监听服务
   handleRouterListen(oldPathName: string, pathName: string, param: any) {
+    console.log(param);
+
     if (param[PRODUCT_BY_MICRO_FRONTEND]) {
-      const oldAppIndex = this.servers.findIndex(
-        (val) => val.activeRoute === oldPathName
-      );
-      const newAppIndex = this.servers.findIndex(
+      const newAppList = this.servers.filter(
         (val) => val.activeRoute === pathName
       );
+      console.log(oldPathName, pathName);
 
       // 卸载旧服务
-      if (oldAppIndex > -1 && newAppIndex > -1) {
-        const oldContainerId = this.servers[oldAppIndex].containerId;
-        const newContainerId = this.servers[newAppIndex].containerId;
-        if (oldContainerId === newContainerId) {
-          const appName = this.servers[oldAppIndex].appName;
-          const container = document.querySelector(oldContainerId);
-          const lifeCycle = this.serverLoadData[appName].lifeCycle;
-          if (container && lifeCycle) {
-            unmountScript(appName, container, lifeCycle);
+      if (newAppList.length > 0) {
+        for (let item of oldAppList) {
+          if (this.currentActiveContainer.includes(item.containerId)) {
+            const appName = item.appName;
+            const container = document.querySelector(item.containerId);
+            const loadData = this.serverLoadData[appName];
+            if (container && loadData.lifeCycle && loadData.sandbox) {
+              console.log(111, oldAppList);
+              unmountScript(
+                appName,
+                container,
+                loadData.lifeCycle,
+                loadData.sandbox
+              );
+            }
           }
         }
       }
 
       // 挂载新服务
-      if (newAppIndex > -1) {
-        const newAppName = this.servers[newAppIndex].appName;
-        console.log(this.servers[newAppIndex].activeRoute, this.currentRoute);
+      for (let item of newAppList) {
+        const newAppName = item.appName;
 
-        if (this.servers[newAppIndex].activeRoute !== this.currentRoute) {
-          this.setDefaultRoute(this.servers[newAppIndex].activeRoute);
-          runScript(
-            this.servers[newAppIndex],
-            this.serverLoadData[newAppName],
-            this.store
-          );
+        if (item.activeRoute !== this.currentRoute) {
+          this.setDefaultRoute(item.activeRoute);
+          runScript(item, this.serverLoadData[newAppName], this.store);
         }
       }
     }

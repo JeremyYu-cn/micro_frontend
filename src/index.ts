@@ -6,16 +6,16 @@ import MicroFrontend from './load/index';
   const appList: RegisterData[] = [
     {
       appName: 'middleReact',
-      entry: 'http://localhost:3001',
-      containerId: '#middle_background',
-      activeRoute: '/react',
+      entry: 'http://localhost:3000',
+      containerId: '#middle_background_react',
+      activeRoute: '/',
     },
-    // {
-    //   appName: 'middleBackground',
-    //   entry: 'http://localhost:3000',
-    //   containerId: '#middle_background',
-    //   activeRoute: '/vue',
-    // },
+    {
+      appName: 'middleBackground',
+      entry: 'http://localhost:3001',
+      containerId: '#middle_background_vue',
+      activeRoute: '/vue',
+    },
   ];
   const microService = new MicroFrontend(appList);
   await microService.init();

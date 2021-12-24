@@ -41,15 +41,20 @@ export async function runScript(
         setEventTrigger(appData.appName, key, callback),
     },
   });
-  return lifeCycle;
+  return {
+    sandBox: appSandBox,
+    lifeCycle,
+  };
 }
 
 /** 卸载应用 */
 export function unmountScript(
   appName: string,
   container: Element,
-  lifeCycle: LoadFunctionResult
+  lifeCycle: LoadFunctionResult,
+  sandBox: SandBox
 ) {
   clearEventTrigger(appName);
+  sandBox.inActive();
   lifeCycle.unmount({ container });
 }

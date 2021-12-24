@@ -3,6 +3,7 @@ import type {
   LoadFunctionMountParam,
   UnloadFunctionParam,
 } from '../globalType';
+import SandBox from '../sandbox/index';
 
 export type LoadHtmlResult = {
   entry: string;
@@ -10,6 +11,7 @@ export type LoadHtmlResult = {
   scriptSrc: string[];
   styleSrc: string[];
   lifeCycle?: LoadFunctionResult;
+  sandbox?: SandBox;
 };
 
 const scriptReg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
@@ -50,6 +52,7 @@ export type LoadFunctionResult = {
 function injectEnvironmentStr() {
   return `
       window.${PRODUCT_BY_MICRO_FRONTEND} = true;
+      window.__vite_plugin_react_preamble_installed__ = true;
   `;
 }
 
@@ -69,7 +72,6 @@ export async function loadFunction<T extends LoadFunctionResult>(
   scriptStr += `]);
     })(this)
   `;
-  console.log(scriptStr);
 
   const result = await new Function(scriptStr).call(context);
   let obj: LoadFunctionResult = {

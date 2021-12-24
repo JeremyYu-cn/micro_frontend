@@ -8,13 +8,16 @@
           <li>react</li>
         </ul>
       </div>
-      <div id="middle_background" style="width: calc(100vw - 200px)">111</div>
+      <div style="display: flex">
+        <div id="middle_background_vue" style="width: 60vw">111</div>
+        <div id="middle_background_react" style="width: 20vw">111</div>
+      </div>
     </section>
     <script lang="text/javascript">
       var list = document.querySelector("#list");
       list.addEventListener("click", function(e) {
         if (e.target.nodeName === "LI") {
-          var text = e.target.innerText
+          var text = e.target.innerText === "react" ? "" : e.target.innerText;
           window.history.pushState({ "PRODUCT_BY_MICRO_FRONTEND": true }, "", `/${text}`)
         }
       })
