@@ -2,6 +2,7 @@ import type { RegisterData } from '../globalType';
 import SandBox from '../sandbox/index';
 import {
   clearEventTrigger,
+  getStoreValue,
   setEventTrigger,
   setStoreValue,
 } from '../storage/index';
@@ -35,7 +36,7 @@ export async function runScript(
   lifeCycle.mount({
     container,
     store: {
-      get: (key) => globalStore[key],
+      get: (key) => getStoreValue(globalStore[key], key),
       set: (key, value) => setStoreValue(globalStore, key, value),
       listen: ({ key, callback }) =>
         setEventTrigger(appData.appName, key, callback),

@@ -5,18 +5,23 @@ export type listenCallback = (
 ) => void;
 
 /** 监听hash路由变化 */
-function listenHash(callback: (oldUrl: string, newUrl: string) => void) {
+function listenHash(callback: listenCallback) {
   window.addEventListener('hashchange', (ev) => {
-    callback(ev.oldURL, ev.newURL);
+    callback(getHashPathName(ev.oldURL), getHashPathName(ev.newURL), {});
   });
 }
 
+function getHashPathName(url: string) {
+  const pathArr = url.split('#');
+  return pathArr[1] ? `/${pathArr[1]}` : '/';
+}
+
 /** 监听history路由变化 */
-function listenHistory(callback: listenCallback) {
+function listenHistory(callback: listenCallback, currentRoute: string) {
   window.history.pushState = historyControlRewrite('pushState', callback);
   window.history.replaceState = historyControlRewrite('replaceState', callback);
   window.addEventListener('popstate', (ev) => {
-    console.log(ev);
+    callback(currentRoute, window.location.pathname, ev.state);
   });
 }
 
@@ -35,9 +40,10 @@ const historyControlRewrite = function (
 };
 
 /** 挂载路由监听器 */
-export function loadRouterListen(callback: listenCallback) {
-  listenHash((oldUrl, newUrl) => {
-    console.log(oldUrl, newUrl);
-  });
-  listenHistory(callback);
+export function loadRouterListen(
+  callback: listenCallback,
+  currentRoute: string = ''
+) {
+  listenHash(callback);
+  listenHistory(callback, currentRoute);
 }

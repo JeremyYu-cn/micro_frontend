@@ -1,13 +1,13 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from "../config/index";
-import { RegisterData } from "../globalType";
-import { loadRouterListen } from "../route/index";
-import { addNewListener, createStore } from "../storage/index";
-import { loadHtml, LoadHtmlResult } from "./load";
-import { runScript, unmountScript } from "./run";
+import { PRODUCT_BY_MICRO_FRONTEND } from '../config/index';
+import { RegisterData } from '../globalType';
+import { loadRouterListen } from '../route/index';
+import { addNewListener, createStore } from '../storage/index';
+import { loadHtml, LoadHtmlResult } from './load';
+import { runScript, unmountScript } from './run';
 
 interface MicroFrountendMethod {
   init: () => void;
-  setDefaultRoute: (routeName: string) => void;
+  setCurrentRoute: (routeName: string) => void;
   start: () => void;
 }
 
@@ -26,7 +26,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
   constructor(servers: RegisterData[]) {
     this.servers = servers;
     this.serverLoadData = {};
-    this.currentRoute = "";
+    this.currentRoute = '';
     this.currentActiveApp = [];
     this.store = createStore();
   }
@@ -42,8 +42,8 @@ export default class MicroFrountend implements MicroFrountendMethod {
     return true;
   }
 
-  /** 设置默认路由 */
-  public setDefaultRoute(routeName: string) {
+  /** 设置路由 */
+  public setCurrentRoute(routeName: string) {
     const appIndex = this.servers.findIndex(
       (val) => val.activeRoute === routeName
     );
@@ -86,8 +86,10 @@ export default class MicroFrountend implements MicroFrountendMethod {
 
   /** 开启加载微前端应用 */
   public async start() {
-    loadRouterListen((oldPath, pathName, param) =>
-      this.handleRouterListen(oldPath, pathName, param)
+    loadRouterListen(
+      (oldPath, pathName, param) =>
+        this.handleRouterListen(oldPath, pathName, param),
+      this.currentRoute
     );
     const currentRoute = this.currentRoute || window.location.pathname;
     console.log(window.location.pathname);
@@ -114,7 +116,6 @@ export default class MicroFrountend implements MicroFrountendMethod {
       const newAppList = this.servers.filter(
         (val) => val.activeRoute === pathName
       );
-      console.log(oldPathName, pathName);
 
       // 卸载旧服务
       if (newAppList.length > 0) {
@@ -123,17 +124,15 @@ export default class MicroFrountend implements MicroFrountendMethod {
           (val) =>
             newAppList.findIndex((item) => item.appName !== val.appName) > -1
         );
-        console.log("destoryList", destoryList);
 
         for (let item of destoryList) {
           const appName = item.appName;
           const container = document.querySelector(item.containerId);
           const loadData = this.serverLoadData[appName];
-          console.log(loadData);
 
           if (container && loadData.lifeCycle && loadData.sandbox) {
             this.removeCurrentActiveApp(item.appName);
-            console.log("destoryAppName", appName);
+            console.log('destoryAppName', appName);
 
             unmountScript(
               appName,
@@ -149,7 +148,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
       for (let item of newAppList) {
         const newAppName = item.appName;
         if (item.activeRoute !== this.currentRoute) {
-          this.setDefaultRoute(item.activeRoute);
+          this.setCurrentRoute(item.activeRoute);
           this.appendCurrentActiveApp(item.appName);
           const scriptResult = await runScript(
             item,

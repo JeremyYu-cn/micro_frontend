@@ -62,6 +62,13 @@ export function setStoreValue<T extends any>(
   return true;
 }
 
+export function getStoreValue<T extends any>(
+  target: Record<string, any>,
+  key: string
+): T {
+  return target[key];
+}
+
 /** 清除全局变量监听 */
 export function clearEventTrigger(appName: string) {
   listener.set(appName, {});

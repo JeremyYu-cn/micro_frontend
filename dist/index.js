@@ -5,14 +5,18 @@
   // src/route/index.ts
   function listenHash(callback) {
     window.addEventListener("hashchange", (ev) => {
-      callback(ev.oldURL, ev.newURL);
+      callback(getHashPathName(ev.oldURL), getHashPathName(ev.newURL), {});
     });
   }
-  function listenHistory(callback) {
+  function getHashPathName(url) {
+    const pathArr = url.split("#");
+    return pathArr[1] ? `/${pathArr[1]}` : "/";
+  }
+  function listenHistory(callback, currentRoute) {
     window.history.pushState = historyControlRewrite("pushState", callback);
     window.history.replaceState = historyControlRewrite("replaceState", callback);
     window.addEventListener("popstate", (ev) => {
-      console.log(ev);
+      callback(currentRoute, window.location.pathname, ev.state);
     });
   }
   var historyControlRewrite = function(name, callback) {
@@ -25,11 +29,9 @@
       callback(oldPathName, url || "", data);
     };
   };
-  function loadRouterListen(callback) {
-    listenHash((oldUrl, newUrl) => {
-      console.log(oldUrl, newUrl);
-    });
-    listenHistory(callback);
+  function loadRouterListen(callback, currentRoute = "") {
+    listenHash(callback);
+    listenHistory(callback, currentRoute);
   }
 
   // src/storage/index.ts
@@ -71,6 +73,9 @@
   function setStoreValue(target, key, value) {
     target[key] = value;
     return true;
+  }
+  function getStoreValue(target, key) {
+    return target[key];
   }
   function clearEventTrigger(appName) {
     listener.set(appName, {});
@@ -183,7 +188,7 @@
     lifeCycle.mount({
       container,
       store: {
-        get: (key) => globalStore[key],
+        get: (key) => getStoreValue(globalStore[key], key),
         set: (key, value) => setStoreValue(globalStore, key, value),
         listen: ({ key, callback }) => setEventTrigger(appData.appName, key, callback)
       }
@@ -221,7 +226,7 @@
       }
       return true;
     }
-    setDefaultRoute(routeName) {
+    setCurrentRoute(routeName) {
       const appIndex = this.servers.findIndex((val) => val.activeRoute === routeName);
       if (appIndex === -1)
         return false;
@@ -255,7 +260,7 @@
       return containerList;
     }
     async start() {
-      loadRouterListen((oldPath, pathName, param) => this.handleRouterListen(oldPath, pathName, param));
+      loadRouterListen((oldPath, pathName, param) => this.handleRouterListen(oldPath, pathName, param), this.currentRoute);
       const currentRoute = this.currentRoute || window.location.pathname;
       console.log(window.location.pathname);
       const appList = this.servers.filter((val) => val.activeRoute === currentRoute);
@@ -271,16 +276,13 @@
     async handleRouterListen(oldPathName, pathName, param) {
       if (param[PRODUCT_BY_MICRO_FRONTEND]) {
         const newAppList = this.servers.filter((val) => val.activeRoute === pathName);
-        console.log(oldPathName, pathName);
         if (newAppList.length > 0) {
           const activeContainerList = this.getCurrentActiveContainer();
           const destoryList = activeContainerList.filter((val) => newAppList.findIndex((item) => item.appName !== val.appName) > -1);
-          console.log("destoryList", destoryList);
           for (let item of destoryList) {
             const appName = item.appName;
             const container = document.querySelector(item.containerId);
             const loadData = this.serverLoadData[appName];
-            console.log(loadData);
             if (container && loadData.lifeCycle && loadData.sandbox) {
               this.removeCurrentActiveApp(item.appName);
               console.log("destoryAppName", appName);
@@ -291,7 +293,7 @@
         for (let item of newAppList) {
           const newAppName = item.appName;
           if (item.activeRoute !== this.currentRoute) {
-            this.setDefaultRoute(item.activeRoute);
+            this.setCurrentRoute(item.activeRoute);
             this.appendCurrentActiveApp(item.appName);
             const scriptResult = await runScript(item, this.serverLoadData[newAppName], this.store);
             this.appendCurrentActiveApp(item.appName);
