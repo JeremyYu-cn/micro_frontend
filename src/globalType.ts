@@ -1,8 +1,11 @@
+import { LoadScriptType } from './load/load';
+
 export type RegisterData = {
   appName: string;
   entry: string;
   containerId: string;
   activeRoute: string;
+  type: LoadScriptType;
 };
 
 export type triggerEventParam<T> = {

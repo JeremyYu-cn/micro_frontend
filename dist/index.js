@@ -85,7 +85,7 @@
   var scriptReg = /(?<=<script[^>]*src=['\"]?)[^'\"> ]*/g;
   var styleReg = /(?<=<link[^>]*href=['\"]?)[^'\"> ]*/g;
   var isHttp = /http(s)?:\/\//;
-  async function loadHtml(entry) {
+  async function loadHtml(entry, type) {
     const data = await fetch(entry, {
       method: "GET"
     });
@@ -93,23 +93,29 @@
     const scriptArr = text.match(scriptReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     const styleArr = text.match(styleReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     text = text.replace(/(<script.*><\/script>)/g, "");
+    const scriptText = [];
+    if (type === "string" && scriptArr) {
+      for (const item of scriptArr) {
+        let scriptFetch = await fetch(item, { method: "GET" });
+        scriptText.push(await scriptFetch.text());
+      }
+    }
     return {
       entry,
       html: text,
-      scriptSrc: scriptArr || [],
+      scriptSrc: type === "string" ? scriptText : scriptArr || [],
       styleSrc: styleArr || []
     };
   }
-  function injectEnvironmentStr() {
-    return `
-      window.${PRODUCT_BY_MICRO_FRONTEND} = true;
-      window.__vite_plugin_react_preamble_installed__ = true;
-  `;
+  function injectEnvironmentStr(context) {
+    context[PRODUCT_BY_MICRO_FRONTEND] = true;
+    context.__vite_plugin_react_preamble_installed__ = true;
+    return true;
   }
-  async function loadFunction(context, scripts = []) {
+  async function loadScriptByImport(scripts) {
+    injectEnvironmentStr(window);
     let scriptStr = `
-    ${injectEnvironmentStr()}
-    return (async function(window) {
+    return ((window) => {
       return Promise.all([`;
     scripts.forEach((val) => {
       scriptStr += `import("${val}"),`;
@@ -118,7 +124,27 @@
     scriptStr += `]);
     })(this)
   `;
-    const result = await new Function(scriptStr).call(context);
+    return await new Function(scriptStr)();
+  }
+  async function loadScriptByString(scripts, context) {
+    const scriptArr = [];
+    injectEnvironmentStr(window);
+    console.log(scripts);
+    scripts.forEach(async (val) => {
+      scriptArr.push(await new Function(`
+          ${val}
+          return window;
+    `).call(context, context));
+    });
+    return scriptArr;
+  }
+  async function loadFunction(context, scripts = [], type = "import") {
+    let result = {};
+    if (type === "import") {
+      result = await loadScriptByImport(scripts);
+    } else {
+      result = await loadScriptByString(scripts, context);
+    }
     let obj = {
       beforeMount: () => {
       },
@@ -130,6 +156,7 @@
     result.forEach((val) => {
       Object.assign(obj, val);
     });
+    console.log(obj.mount);
     return obj;
   }
 
@@ -151,9 +178,6 @@
       this.proxy = new Proxy(fateWindow, {
         set: (target, key, value) => {
           if (this.isSandboxActive) {
-            if (Object.keys(context).includes(key)) {
-              context[key] = value;
-            }
             target[key] = value;
           }
           return true;
@@ -161,10 +185,9 @@
         get: (target, key) => {
           if (target[key]) {
             return target[key];
-          } else if (Object.keys(context).includes(key)) {
+          } else {
             return context[key];
           }
-          return void 0;
         }
       });
     }
@@ -180,7 +203,7 @@
     }
     const appSandBox = new sandbox_default(appData.appName, window);
     appSandBox.active();
-    const lifeCycle = await loadFunction(appSandBox.proxy, htmlData.scriptSrc);
+    const lifeCycle = await loadFunction(appSandBox.proxy, htmlData.scriptSrc, appData.type);
     if (!runIsRender[appData.appName]) {
       lifeCycle.beforeMount();
       container.innerHTML = htmlData.html || "";
@@ -220,7 +243,7 @@
     }
     async init() {
       for (let item of this.servers) {
-        const serverData = await loadHtml(item.entry);
+        const serverData = await loadHtml(item.entry, item.type);
         addNewListener(item.appName);
         this.serverLoadData[item.appName] = serverData;
       }
@@ -296,7 +319,6 @@
             this.setCurrentRoute(item.activeRoute);
             this.appendCurrentActiveApp(item.appName);
             const scriptResult = await runScript(item, this.serverLoadData[newAppName], this.store);
-            this.appendCurrentActiveApp(item.appName);
             this.serverLoadData[item.appName].lifeCycle = scriptResult.lifeCycle;
             this.serverLoadData[item.appName].sandbox = scriptResult.sandBox;
           }
@@ -309,16 +331,11 @@
   (async () => {
     const appList = [
       {
-        appName: "middleReact",
-        entry: "http://localhost:3001",
-        containerId: "#middle_background_react",
-        activeRoute: "/"
-      },
-      {
         appName: "middleBackground",
-        entry: "http://localhost:3000",
+        entry: "http://localhost:7105",
         containerId: "#middle_background_vue",
-        activeRoute: "/vue"
+        activeRoute: "/vue",
+        type: "string"
       }
     ];
     const microService = new MicroFrountend(appList);

@@ -1,20 +1,21 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from "./config/index";
-import { RegisterData } from "./globalType";
-import MicroFrontend from "./load/index";
+import { PRODUCT_BY_MICRO_FRONTEND } from './config/index';
+import { RegisterData } from './globalType';
+import MicroFrontend from './load/index';
 
 (async () => {
   const appList: RegisterData[] = [
+    // {
+    //   appName: 'middleReact',
+    //   entry: 'http://localhost:3001',
+    //   containerId: '#middle_background_react',
+    //   activeRoute: '/',
+    // },
     {
-      appName: "middleReact",
-      entry: "http://localhost:3001",
-      containerId: "#middle_background_react",
-      activeRoute: "/",
-    },
-    {
-      appName: "middleBackground",
-      entry: "http://localhost:3000",
-      containerId: "#middle_background_vue",
-      activeRoute: "/vue",
+      appName: 'middleBackground',
+      entry: 'http://localhost:7105',
+      containerId: '#middle_background_vue',
+      activeRoute: '/vue',
+      type: 'string',
     },
   ];
   const microService = new MicroFrontend(appList);

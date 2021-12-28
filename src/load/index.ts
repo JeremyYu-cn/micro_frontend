@@ -34,7 +34,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
   /** 初始化 */
   public async init() {
     for (let item of this.servers) {
-      const serverData = await loadHtml(item.entry);
+      const serverData = await loadHtml(item.entry, item.type);
       addNewListener(item.appName);
       this.serverLoadData[item.appName] = serverData;
     }
@@ -113,6 +113,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
     param: any
   ) {
     if (param[PRODUCT_BY_MICRO_FRONTEND]) {
+      // 匹配路径名的所有应用
       const newAppList = this.servers.filter(
         (val) => val.activeRoute === pathName
       );
@@ -155,7 +156,6 @@ export default class MicroFrountend implements MicroFrountendMethod {
             this.serverLoadData[newAppName],
             this.store
           );
-          this.appendCurrentActiveApp(item.appName);
           this.serverLoadData[item.appName].lifeCycle = scriptResult.lifeCycle;
           this.serverLoadData[item.appName].sandbox = scriptResult.sandBox;
         }

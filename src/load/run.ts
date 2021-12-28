@@ -21,7 +21,12 @@ export async function runScript(
   }
   const appSandBox = new SandBox(appData.appName, window);
   appSandBox.active();
-  const lifeCycle = await loadFunction(appSandBox.proxy, htmlData.scriptSrc);
+
+  const lifeCycle = await loadFunction(
+    appSandBox.proxy,
+    htmlData.scriptSrc,
+    appData.type
+  );
 
   // 已经渲染过没必要重新载入
   if (!runIsRender[appData.appName]) {

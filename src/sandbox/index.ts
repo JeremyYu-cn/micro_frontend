@@ -3,7 +3,7 @@ interface SandBoxImplement {
   inActive: () => void;
 }
 
-type ProxyParam = Record<string, any> & Window;
+export type ProxyParam = Record<string, any> & Window;
 
 /** 沙箱操作 */
 class SandBox implements SandBoxImplement {
@@ -28,9 +28,6 @@ class SandBox implements SandBoxImplement {
     this.proxy = new Proxy(<ProxyParam>fateWindow, {
       set: (target, key, value) => {
         if (this.isSandboxActive) {
-          if (Object.keys(context).includes(<string>key)) {
-            context[<string>key] = value;
-          }
           target[<string>key] = value;
         }
         return true;
@@ -38,11 +35,9 @@ class SandBox implements SandBoxImplement {
       get: (target, key) => {
         if (target[<string>key]) {
           return target[<string>key];
-        } else if (Object.keys(context).includes(<string>key)) {
+        } else {
           return context[<string>key];
         }
-
-        return undefined;
       },
     });
   }
