@@ -1,6 +1,6 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from './config/index';
-import { RegisterData } from './globalType';
-import MicroFrontend from './load/index';
+import { PRODUCT_BY_MICRO_FRONTEND } from "./config/index";
+import { RegisterData } from "./globalType";
+import MicroFrontend from "./load/index";
 
 (async () => {
   const appList: RegisterData[] = [
@@ -11,11 +11,11 @@ import MicroFrontend from './load/index';
     //   activeRoute: '/',
     // },
     {
-      appName: 'middleBackground',
-      entry: 'http://localhost:7105',
-      containerId: '#middle_background_vue',
-      activeRoute: '/vue',
-      type: 'string',
+      appName: "middleVue",
+      entry: "http://localhost:7105",
+      containerId: "#middle_background_vue",
+      activeRoute: "/vue",
+      type: "string",
     },
   ];
   const microService = new MicroFrontend(appList);

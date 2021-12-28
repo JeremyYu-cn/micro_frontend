@@ -1,5 +1,5 @@
-const path = require('path');
-const { name } = require('./package');
+const path = require("path");
+const { name } = require("./package");
 
 function resolve(dir) {
   return path.join(__dirname, dir);
@@ -8,9 +8,10 @@ function resolve(dir) {
 const port = 7105;
 
 module.exports = {
-  outputDir: 'dist',
-  assetsDir: 'static',
+  outputDir: "dist",
+  assetsDir: "static",
   filenameHashing: true,
+  publicPath: "http://localhost:7105",
   devServer: {
     hot: true,
     disableHostCheck: true,
@@ -20,21 +21,20 @@ module.exports = {
       errors: true,
     },
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      "Access-Control-Allow-Origin": "*",
     },
   },
   // 自定义webpack配置
   configureWebpack: {
     resolve: {
       alias: {
-        '@': resolve('src'),
+        "@": resolve("src"),
       },
     },
     output: {
       // 把子应用打包成 umd 库格式
-      library: `${name}-[name]`,
-      libraryTarget: 'umd',
-      jsonpFunction: `webpackJsonp_${name}`,
+      library: `middleVue`,
+      libraryTarget: "umd",
     },
   },
 };

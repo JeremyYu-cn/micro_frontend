@@ -93,6 +93,7 @@
     const scriptArr = text.match(scriptReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     const styleArr = text.match(styleReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     text = text.replace(/(<script.*><\/script>)/g, "");
+    console.log(scriptArr);
     const scriptText = [];
     if (type === "string" && scriptArr) {
       for (const item of scriptArr) {
@@ -133,7 +134,7 @@
     scripts.forEach(async (val) => {
       scriptArr.push(await new Function(`
           ${val}
-          return window;
+          return window.middleVue;
     `).call(context, context));
     });
     return scriptArr;
@@ -331,7 +332,7 @@
   (async () => {
     const appList = [
       {
-        appName: "middleBackground",
+        appName: "middleVue",
         entry: "http://localhost:7105",
         containerId: "#middle_background_vue",
         activeRoute: "/vue",
