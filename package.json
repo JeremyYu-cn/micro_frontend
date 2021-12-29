@@ -5,12 +5,26 @@
   "main": "index.js",
   "scripts": {
     "dev": "esbuild ./src/index.ts --bundle  --outfile=dist/index.js --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "\\.(ts|tsx)$": "ts-jest"
+    },
+    "testRegex": "/test/.*\\.(ts|tsx|js)$"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/jest": "^27.0.3",
     "esbuild": "^0.14.5",
+    "jest": "^27.4.5",
+    "ts-jest": "^27.1.2",
     "typescript": "^4.5.4"
   }
 }
