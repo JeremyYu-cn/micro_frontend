@@ -1,9 +1,9 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from "../config/index";
+import { PRODUCT_BY_MICRO_FRONTEND } from '../config/index';
 import type {
   LoadFunctionMountParam,
   UnloadFunctionParam,
-} from "../globalType";
-import SandBox, { ProxyParam } from "../sandbox/index";
+} from '../globalType';
+import SandBox, { ProxyParam } from '../sandbox/index';
 
 export type LoadHtmlResult = {
   entry: string;
@@ -24,7 +24,7 @@ export async function loadHtml(
   type: LoadScriptType
 ): Promise<LoadHtmlResult> {
   const data = await fetch(entry, {
-    method: "GET",
+    method: 'GET',
   });
   let text = await data.text();
   const scriptArr = text
@@ -35,21 +35,19 @@ export async function loadHtml(
     .match(styleReg)
     ?.filter((val) => val)
     .map((val) => (isHttp.test(val) ? val : `${entry}${val}`));
-  text = text.replace(/(<script.*><\/script>)/g, "");
-  console.log(scriptArr);
+  text = text.replace(/(<script.*><\/script>)/g, '');
 
   const scriptText: string[] = [];
-  if (type === "string" && scriptArr) {
+  if (type === 'webpack' && scriptArr) {
     for (const item of scriptArr) {
-      let scriptFetch = await fetch(item, { method: "GET" });
+      let scriptFetch = await fetch(item, { method: 'GET' });
       scriptText.push(await scriptFetch.text());
     }
   }
-
   return {
     entry,
     html: text,
-    scriptSrc: type === "string" ? scriptText : scriptArr || [],
+    scriptSrc: type === 'webpack' ? scriptText : scriptArr || [],
     styleSrc: styleArr || [],
   };
 }
@@ -60,7 +58,7 @@ export type LoadFunctionResult = {
   mount: (props: LoadFunctionMountParam) => void;
   unmount: (props: UnloadFunctionParam) => void;
 };
-export type LoadScriptType = "import" | "string";
+export type LoadScriptType = 'esbuild' | 'webpack';
 
 /** 注入环境变量 */
 export function injectEnvironmentStr(context: ProxyParam) {
@@ -73,33 +71,33 @@ export function injectEnvironmentStr(context: ProxyParam) {
 export async function loadScriptByImport(scripts: string[]) {
   injectEnvironmentStr(window);
   let scriptStr = `
-    return ((window) => {
       return Promise.all([`;
   scripts.forEach((val) => {
     scriptStr += `import("${val}"),`;
   });
   scriptStr = scriptStr.substring(0, scriptStr.length - 1);
   scriptStr += `]);
-    })(this)
   `;
   return await new Function(scriptStr)();
 }
 
 /** 执行js字符串 */
-export async function loadScriptByString(scripts: string[], context: Window) {
+export async function loadScriptByString(
+  scripts: string[],
+  context: ProxyParam
+) {
   const scriptArr: Promise<Record<string, any>>[] = [];
-  injectEnvironmentStr(window);
-  console.log(scripts);
-
+  injectEnvironmentStr(context);
   scripts.forEach(async (val) => {
     scriptArr.push(
       await new Function(`
-          ${val}
-          return window.middleVue;
-    `).call(context, context)
+          return (window => {
+            ${val}
+            return window.middleVue;
+          })(this)
+    `).call(context)
     );
   });
-
   return scriptArr;
 }
 
@@ -107,10 +105,10 @@ export async function loadScriptByString(scripts: string[], context: Window) {
 export async function loadFunction<T extends LoadFunctionResult>(
   context: Window,
   scripts: string[] = [],
-  type: LoadScriptType = "import"
+  type: LoadScriptType = 'esbuild'
 ): Promise<T> {
   let result = {};
-  if (type === "import") {
+  if (type === 'esbuild') {
     result = await loadScriptByImport(scripts);
   } else {
     result = await loadScriptByString(scripts, context);
@@ -124,7 +122,5 @@ export async function loadFunction<T extends LoadFunctionResult>(
   (<Record<string, any>[]>result).forEach((val) => {
     Object.assign(obj, val);
   });
-
-  console.log(obj.mount);
   return <T>obj;
 }

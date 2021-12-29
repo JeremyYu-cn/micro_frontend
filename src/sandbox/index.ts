@@ -15,12 +15,10 @@ class SandBox implements SandBoxImplement {
   active() {
     this.isSandboxActive = true;
   }
-
   /** 关闭沙箱 */
   inActive() {
     this.isSandboxActive = false;
   }
-
   constructor(appName: string, context: Window & Record<string, any>) {
     this.name = appName;
     this.isSandboxActive = false;
@@ -36,11 +34,13 @@ class SandBox implements SandBoxImplement {
         if (target[<string>key]) {
           return target[<string>key];
         } else {
-          return context[<string>key];
+          // @ts-ignore
+          const value = context[key];
+          if (typeof value === 'function') return value.bind(context);
+          return value;
         }
       },
     });
   }
 }
-
 export default SandBox;

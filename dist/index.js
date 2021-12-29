@@ -93,9 +93,8 @@
     const scriptArr = text.match(scriptReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     const styleArr = text.match(styleReg)?.filter((val) => val).map((val) => isHttp.test(val) ? val : `${entry}${val}`);
     text = text.replace(/(<script.*><\/script>)/g, "");
-    console.log(scriptArr);
     const scriptText = [];
-    if (type === "string" && scriptArr) {
+    if (type === "webpack" && scriptArr) {
       for (const item of scriptArr) {
         let scriptFetch = await fetch(item, { method: "GET" });
         scriptText.push(await scriptFetch.text());
@@ -104,7 +103,7 @@
     return {
       entry,
       html: text,
-      scriptSrc: type === "string" ? scriptText : scriptArr || [],
+      scriptSrc: type === "webpack" ? scriptText : scriptArr || [],
       styleSrc: styleArr || []
     };
   }
@@ -116,32 +115,31 @@
   async function loadScriptByImport(scripts) {
     injectEnvironmentStr(window);
     let scriptStr = `
-    return ((window) => {
       return Promise.all([`;
     scripts.forEach((val) => {
       scriptStr += `import("${val}"),`;
     });
     scriptStr = scriptStr.substring(0, scriptStr.length - 1);
     scriptStr += `]);
-    })(this)
   `;
     return await new Function(scriptStr)();
   }
   async function loadScriptByString(scripts, context) {
     const scriptArr = [];
-    injectEnvironmentStr(window);
-    console.log(scripts);
+    injectEnvironmentStr(context);
     scripts.forEach(async (val) => {
       scriptArr.push(await new Function(`
-          ${val}
-          return window.middleVue;
-    `).call(context, context));
+          return (window => {
+            ${val}
+            return window.middleVue;
+          })(this)
+    `).call(context));
     });
     return scriptArr;
   }
-  async function loadFunction(context, scripts = [], type = "import") {
+  async function loadFunction(context, scripts = [], type = "esbuild") {
     let result = {};
-    if (type === "import") {
+    if (type === "esbuild") {
       result = await loadScriptByImport(scripts);
     } else {
       result = await loadScriptByString(scripts, context);
@@ -157,7 +155,6 @@
     result.forEach((val) => {
       Object.assign(obj, val);
     });
-    console.log(obj.mount);
     return obj;
   }
 
@@ -187,7 +184,10 @@
           if (target[key]) {
             return target[key];
           } else {
-            return context[key];
+            const value = context[key];
+            if (typeof value === "function")
+              return value.bind(context);
+            return value;
           }
         }
       });
@@ -332,11 +332,18 @@
   (async () => {
     const appList = [
       {
+        appName: "middleReact",
+        entry: "http://localhost:3001",
+        containerId: "#middle_background_react",
+        activeRoute: "/",
+        type: "esbuild"
+      },
+      {
         appName: "middleVue",
         entry: "http://localhost:7105",
         containerId: "#middle_background_vue",
         activeRoute: "/vue",
-        type: "string"
+        type: "webpack"
       }
     ];
     const microService = new MicroFrountend(appList);
