@@ -1,9 +1,15 @@
 import { useState } from 'react';
 // import logo from './logo.svg';
 import './App.css';
+import { MountProps } from './main';
 
-function App() {
-  const [count, setCount] = useState(0);
+type AppParam  = {
+  props?: MountProps
+}
+
+function App({ props }: AppParam) {
+  const [data, setData] = useState("")
+
 
   return (
     <div className='App'>
@@ -15,8 +21,13 @@ function App() {
         />
         <p>Hello Vite + React!</p>
         <p>
-          <button type='button' onClick={() => setCount((count) => count + 1)}>
-            count is: {count}
+          <button type='button' onClick={() => {
+            if (!props) return;
+            const value = "123";
+            props.store.set("aa", value);
+            setData(value)
+          }}>
+            current value is {data}
           </button>
         </p>
         <p>

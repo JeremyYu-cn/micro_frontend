@@ -298,11 +298,14 @@
       }
     }
     async handleRouterListen(oldPathName, pathName, param) {
+      if (oldPathName === pathName)
+        return;
       if (param[PRODUCT_BY_MICRO_FRONTEND]) {
         const newAppList = this.servers.filter((val) => val.activeRoute === pathName);
         if (newAppList.length > 0) {
           const activeContainerList = this.getCurrentActiveContainer();
           const destoryList = activeContainerList.filter((val) => newAppList.findIndex((item) => item.appName !== val.appName) > -1);
+          console.log(destoryList);
           for (let item of destoryList) {
             const appName = item.appName;
             const container = document.querySelector(item.containerId);
@@ -316,13 +319,11 @@
         }
         for (let item of newAppList) {
           const newAppName = item.appName;
-          if (item.activeRoute !== this.currentRoute) {
-            this.setCurrentRoute(item.activeRoute);
-            this.appendCurrentActiveApp(item.appName);
-            const scriptResult = await runScript(item, this.serverLoadData[newAppName], this.store);
-            this.serverLoadData[item.appName].lifeCycle = scriptResult.lifeCycle;
-            this.serverLoadData[item.appName].sandbox = scriptResult.sandBox;
-          }
+          this.setCurrentRoute(item.activeRoute);
+          this.appendCurrentActiveApp(item.appName);
+          const scriptResult = await runScript(item, this.serverLoadData[newAppName], this.store);
+          this.serverLoadData[item.appName].lifeCycle = scriptResult.lifeCycle;
+          this.serverLoadData[item.appName].sandbox = scriptResult.sandBox;
         }
       }
     }
@@ -342,7 +343,7 @@
         appName: "middleVue",
         entry: "http://localhost:7105",
         containerId: "#middle_background_vue",
-        activeRoute: "/vue",
+        activeRoute: "/",
         type: "webpack"
       }
     ];

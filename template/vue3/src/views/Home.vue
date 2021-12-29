@@ -1,10 +1,12 @@
 <template>
   <img alt="Vue logo" src="../assets/logo.png" />
-  <HelloWorld msg="Vue.js Demo" @close="close"> </HelloWorld>
+  <HelloWorld msg="Vue.js Demo" @close="close"></HelloWorld>
+  <h1>{{ test }}</h1>
 </template>
 
 <script>
 import HelloWorld from '@/components/HelloWorld.vue';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'App',
@@ -12,7 +14,7 @@ export default {
     HelloWorld,
   },
   created() {
-    
+
   },
   mounted() {
     console.log(this.$route);
@@ -22,6 +24,11 @@ export default {
       console.log('close');
     },
   },
+  computed: {
+    ...mapGetters({
+      test: "GET_VALUE"
+    })
+  }
 };
 </script>
 

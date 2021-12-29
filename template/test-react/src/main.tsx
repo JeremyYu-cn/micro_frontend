@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
-type MountProps = {
+export type MountProps = {
   container?: Element;
   store: {
     listen: (
@@ -28,7 +28,7 @@ if (!(window as Record<string, any>).PRODUCT_BY_MICRO_FRONTEND) {
 export function mount(props: MountProps) {
   ReactDOM.render(
     <React.StrictMode>
-      <App />
+      <App props={props} />
     </React.StrictMode>,
     props.container?.querySelector('#root') || document.getElementById('root')
   );

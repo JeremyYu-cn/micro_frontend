@@ -1,11 +1,21 @@
-import { createStore } from 'vuex';
-import count from './count';
+import { createStore } from "vuex";
+import count from "./count";
 
 export default createStore({
-  state: {},
-  mutations: {},
+  state: {
+    test: "",
+  },
+  mutations: {
+    SET_VALUE(state, value) {
+      state.test = value;
+    },
+  },
   actions: {},
-  getters: {},
+  getters: {
+    GET_VALUE(state) {
+      return state.test;
+    },
+  },
   modules: {
     count,
   },
