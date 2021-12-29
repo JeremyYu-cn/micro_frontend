@@ -12,7 +12,7 @@ export default {
     HelloWorld,
   },
   created() {
-    console.log('vue2.0写法 created');
+    
   },
   mounted() {
     console.log(this.$route);

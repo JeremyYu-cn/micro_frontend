@@ -31,7 +31,6 @@ export default {
     };
 
     onMounted(() => {
-      console.log('mounted');
     });
 
     onBeforeUpdate(() => {
