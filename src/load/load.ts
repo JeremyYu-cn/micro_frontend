@@ -58,6 +58,7 @@ export type LoadFunctionResult = {
   mount: (props: LoadFunctionMountParam) => void;
   unmount: (props: UnloadFunctionParam) => void;
 };
+
 export type LoadScriptType = 'esbuild' | 'webpack';
 
 /** 注入环境变量 */

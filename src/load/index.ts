@@ -1,9 +1,9 @@
-import { PRODUCT_BY_MICRO_FRONTEND } from "../config/index";
-import { RegisterData } from "../globalType";
-import { loadRouterListen } from "../route/index";
-import { addNewListener, createStore } from "../storage/index";
-import { loadHtml, LoadHtmlResult } from "./load";
-import { runScript, unmountScript } from "./run";
+import { PRODUCT_BY_MICRO_FRONTEND } from '../config/index';
+import { RegisterData } from '../globalType';
+import { loadRouterListen } from '../route/index';
+import { addNewListener, createStore } from '../storage/index';
+import { loadHtml, LoadHtmlResult } from './load';
+import { runScript, unmountScript } from './run';
 
 interface MicroFrountendMethod {
   init: () => void;
@@ -26,7 +26,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
   constructor(servers: RegisterData[]) {
     this.servers = servers;
     this.serverLoadData = {};
-    this.currentRoute = "";
+    this.currentRoute = '';
     this.currentActiveApp = [];
     this.store = createStore();
   }
@@ -135,7 +135,7 @@ export default class MicroFrountend implements MicroFrountendMethod {
 
           if (container && loadData.lifeCycle && loadData.sandbox) {
             this.removeCurrentActiveApp(item.appName);
-            console.log("destoryAppName", appName);
+            console.log('destoryAppName', appName);
 
             unmountScript(
               appName,

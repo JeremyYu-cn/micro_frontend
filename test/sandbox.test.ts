@@ -10,7 +10,7 @@ describe('Test SandBox', () => {
     expect(sandBox.proxy.a).toBe(1);
     expect(sandBox.proxy.b).toBe(2);
     // @ts-ignore
-    expect(global.a).toBe(undefined);
+    expect(global.a).toBeUndefined();
   });
 
   it('Test SandBox InActive', () => {
